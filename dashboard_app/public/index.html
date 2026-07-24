@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XIAO ESP32S3 TinyML Motion Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0f1015;
+      --card-bg: rgba(26, 28, 38, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent-blue: #4f46e5;
+      --accent-green: #10b981;
+      --accent-orange: #f59e0b;
+      --accent-red: #ef4444;
+      --text: #f3f4f6;
+      --text-dim: #9ca3af;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      background-image: 
+        radial-gradient(at 10% 20%, rgba(79, 70, 229, 0.15) 0px, transparent 50%),
+        radial-gradient(at 90% 80%, rgba(16, 185, 129, 0.12) 0px, transparent 50%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1200px;
+      margin: 0 auto 24px auto;
+      padding: 16px 24px;
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #6366f1, #10b981);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .logo h1 { font-size: 20px; font-weight: 700; }
+
+    .connect-btn {
+      background: linear-gradient(135deg, #4f46e5, #3b82f6);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+      transition: all 0.2s;
+    }
+
+    .connect-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(79, 70, 229, 0.6); }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+
+    .hero-state {
+      text-align: center;
+      padding: 30px 10px;
+    }
+
+    .state-badge {
+      display: inline-block;
+      padding: 12px 28px;
+      border-radius: 30px;
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: all 0.3s ease;
+    }
+
+    .confidence-value {
+      font-size: 48px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .confidence-label {
+      font-size: 14px;
+      color: var(--text-dim);
+    }
+
+    .bars-container { margin-top: 24px; }
+
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .bar-label { width: 70px; font-size: 14px; font-weight: 600; }
+
+    .bar-track {
+      flex: 1;
+      height: 12px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      width: 0%;
+      transition: width 0.2s ease;
+    }
+
+    .bar-pct { width: 45px; text-align: right; font-size: 14px; font-weight: 600; }
+
+    .chart-box { height: 260px; position: relative; }
+
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .tele-card {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .tele-val { font-size: 20px; font-weight: 700; color: #60a5fa; }
+    .tele-lbl { font-size: 12px; color: var(--text-dim); }
+
+    .history-log {
+      max-height: 180px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 13px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .log-item { margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <h1>XIAO ESP32S3 TinyML Motion Dashboard</h1>
+        <p style="font-size: 12px; color: var(--text-dim);">Real-Time BLE Wireless Telemetry & Inference</p>
+      </div>
+    </div>
+    <button class="connect-btn" id="bleBtn" onclick="connectBLE()">
+      <span>📶</span> <span id="bleBtnText">BLE 기기 연결 (Web Bluetooth)</span>
+    </button>
+  </header>
+
+  <div class="container">
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      <div class="card hero-state">
+        <div class="card-title">현재 인식 상태 (Current State)</div>
+        <div class="state-badge" id="stateBadge" style="color: #ff4757;">연결 대기 중</div>
+        <div class="confidence-value" id="confVal">0%</div>
+        <div class="confidence-label">AI 예측 신뢰도</div>
+
+        <div class="bars-container">
+          <div class="bar-row">
+            <div class="bar-label">🛑 idle</div>
+            <div class="bar-track"><div class="bar-fill" id="barIdle" style="background:#ef4444;"></div></div>
+            <div class="bar-pct" id="pctIdle">0%</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">🚶 walk</div>
+            <div class="bar-track"><div class="bar-fill" id="barWalk" style="background:#f59e0b;"></div></div>
+            <div class="bar-pct" id="pctWalk">0%</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">🏃 run</div>
+            <div class="bar-track"><div class="bar-fill" id="barRun" style="background:#10b981;"></div></div>
+            <div class="bar-pct" id="pctRun">0%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">가속도 텔레메트리 (Acc Telemetry)</div>
+        <div class="telemetry-grid">
+          <div class="tele-card"><div class="tele-val" id="accX">0</div><div class="tele-lbl">Acc X</div></div>
+          <div class="tele-card"><div class="tele-val" id="accY">0</div><div class="tele-lbl">Acc Y</div></div>
+          <div class="tele-card"><div class="tele-val" id="accZ">0</div><div class="tele-lbl">Acc Z</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      <div class="card">
+        <div class="card-title">실시간 확률 타임라인 (Probability Timeline)</div>
+        <div class="chart-box">
+          <canvas id="timelineChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">상태 변경 이력 (State Event Log)</div>
+        <div class="history-log" id="logList">
+          <div class="log-item">[System] 대시보드 서버 준비 완료. BLE 연결을 시도하세요.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let bleDevice, bleCharacteristic;
+    const SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
+    const CHARACTERISTIC_UUID = '0000ffe1-0000-1000-8000-00805f9b34fb';
+
+    const STATE_LABELS = {
+      idle: { text: '🛑 멈춤 (Idle)', color: '#ef4444' },
+      walk: { text: '🚶 걷기 (Walk)', color: '#f59e0b' },
+      run: { text: '🏃 뛰기 (Run)', color: '#10b981' }
+    };
+
+    let lastState = '';
+
+    // Chart.js init
+    const ctx = document.getElementById('timelineChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: Array(25).fill(''),
+        datasets: [
+          { label: 'idle', data: Array(25).fill(0), borderColor: '#ef4444', tension: 0.3, borderWidth: 2, pointRadius: 0 },
+          { label: 'walk', data: Array(25).fill(0), borderColor: '#f59e0b', tension: 0.3, borderWidth: 2, pointRadius: 0 },
+          { label: 'run', data: Array(25).fill(0), borderColor: '#10b981', tension: 0.3, borderWidth: 2, pointRadius: 0 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { min: 0, max: 100, ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          x: { grid: { display: false } }
+        },
+        plugins: { legend: { labels: { color: '#eee' } } }
+      }
+    });
+
+    async function connectBLE() {
+      if (!navigator.bluetooth) {
+        log('⚠️ 현재 브라우저(Safari 등)는 Web Bluetooth를 지원하지 않습니다.');
+        log('🔄 Wi-Fi (AP 모드: http://192.168.4.1) 실시간 폴링으로 자동 전환합니다...');
+        startWiFiPolling();
+        return;
+      }
+
+      try {
+        log('BLE 기기 검색 중... 주변 블루투스 장치를 모두 검색합니다.');
+        bleDevice = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: [SERVICE_UUID]
+        });
+
+        log(`연결 중: ${bleDevice.name || '알 수 없는 기기'}`);
+        const server = await bleDevice.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        bleCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+
+        await bleCharacteristic.startNotifications();
+        bleCharacteristic.addEventListener('characteristicvaluechanged', handleBLENotify);
+
+        document.getElementById('bleBtnText').textContent = '✅ BLE 연결됨 (' + (bleDevice.name || 'Ohzi_ESP32S3_Motion') + ')';
+        document.getElementById('bleBtn').style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        log('✅ BLE 연결 성공! 무선 데이터 수신 중...');
+      } catch (err) {
+        log('❌ BLE 연결 실패: ' + err.message);
+        log('💡 Tip: Chrome 또는 Edge 브라우저를 이용하시거나, Wi-Fi (Ohzi_esp)에 연결해 주세요.');
+      }
+    }
+
+    let isPolling = false;
+    function startWiFiPolling() {
+      if (isPolling) return;
+      isPolling = true;
+      document.getElementById('bleBtnText').textContent = '🌐 Wi-Fi (AP 모드) 연결 중...';
+      
+      async function poll() {
+        try {
+          const res = await fetch('http://192.168.4.1/classify');
+          const data = await res.json();
+          updateDashboard(data);
+          document.getElementById('bleBtnText').textContent = '✅ Wi-Fi (AP 모드) 실시간 수신 중';
+          document.getElementById('bleBtn').style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        } catch(e) {
+          document.getElementById('bleBtnText').textContent = '⚠️ Wi-Fi (Ohzi_esp) 연결 대기 중';
+        }
+        setTimeout(poll, 500);
+      }
+      poll();
+    }
+
+    // Auto-detect Safari/Mobile and offer seamless experience
+    window.addEventListener('DOMContentLoaded', () => {
+      if (!navigator.bluetooth) {
+        log('💡 Safari 브라우저 감지됨. Wi-Fi AP 모드(Ohzi_esp) 연결 시 자동으로 대시보드가 갱신됩니다.');
+        startWiFiPolling();
+      }
+    });
+
+    function handleBLENotify(event) {
+      const decoder = new TextDecoder('utf-8');
+      const jsonStr = decoder.decode(event.target.value);
+      try {
+        const d = JSON.parse(jsonStr);
+        updateDashboard(d);
+      } catch(e) {}
+    }
+
+    function updateDashboard(d) {
+      let label = d.label || 'idle';
+      const scores = d.scores || { idle: 0, walk: 0, run: 0 };
+
+      const vals = Object.values(scores);
+      const maxVal = Math.max(...vals);
+      const minVal = Math.min(...vals);
+
+      // If all probabilities are nearly equal (diff < 0.18) or max confidence is low (< 0.45), default to "idle"
+      if ((maxVal - minVal) < 0.18 || maxVal < 0.45) {
+        label = 'idle';
+      }
+
+      const conf = Math.round((scores[label] || d.confidence || 0) * 100);
+
+      // Update badge
+      const meta = STATE_LABELS[label] || { text: label, color: '#4f46e5' };
+      const badge = document.getElementById('stateBadge');
+      badge.textContent = meta.text;
+      badge.style.color = meta.color;
+      document.getElementById('confVal').textContent = conf + '%';
+
+      // Update bars
+      const pIdle = Math.round((scores.idle || 0) * 100);
+      const pWalk = Math.round((scores.walk || 0) * 100);
+      const pRun = Math.round((scores.run || 0) * 100);
+
+      document.getElementById('barIdle').style.width = pIdle + '%';
+      document.getElementById('pctIdle').textContent = pIdle + '%';
+      document.getElementById('barWalk').style.width = pWalk + '%';
+      document.getElementById('pctWalk').textContent = pWalk + '%';
+      document.getElementById('barRun').style.width = pRun + '%';
+      document.getElementById('pctRun').textContent = pRun + '%';
+
+      // Update Accel
+      if (d.ax !== undefined) document.getElementById('accX').textContent = d.ax;
+      if (d.ay !== undefined) document.getElementById('accY').textContent = d.ay;
+      if (d.az !== undefined) document.getElementById('accZ').textContent = d.az;
+
+      // Update Chart
+      chart.data.datasets[0].data.shift(); chart.data.datasets[0].data.push(pIdle);
+      chart.data.datasets[1].data.shift(); chart.data.datasets[1].data.push(pWalk);
+      chart.data.datasets[2].data.shift(); chart.data.datasets[2].data.push(pRun);
+      chart.update();
+
+      // Log state change
+      if (label !== lastState) {
+        log(`⚡ 상태 전환: ${lastState || 'None'} ➡ ${meta.text} (${conf}%)`);
+        lastState = label;
+      }
+    }
+
+    function log(msg) {
+      const time = new Date().toLocaleTimeString();
+      const list = document.getElementById('logList');
+      const item = document.createElement('div');
+      item.className = 'log-item';
+      item.textContent = `[${time}] ${msg}`;
+      list.prepend(item);
+    }
+  </script>
+</body>
+</html>
