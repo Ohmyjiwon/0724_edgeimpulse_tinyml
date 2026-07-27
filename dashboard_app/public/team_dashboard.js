@@ -1,5 +1,5 @@
-// MQTT Broker settings
-const brokerUrl = "broker.hivemq.com";
+// MQTT Broker settings (Local Hostname)
+const brokerUrl = window.location.hostname;
 const brokerPort = 8000;
 const clientId = "TeamDashboard_" + Math.random().toString(16).substr(2, 8);
 
@@ -40,9 +40,10 @@ const connectOptions = {
   timeout: 3,
   onSuccess: onConnect,
   onFailure: onFailure,
-  useSSL: true
+  // useSSL: true // 로컬 통신이므로 SSL 제거
 };
 
+document.getElementById('brokerUrl').innerText = brokerUrl + ":" + brokerPort;
 console.log("Connecting to " + brokerUrl + ":" + brokerPort);
 client.connect(connectOptions);
 
@@ -97,9 +98,8 @@ function updateMotionUI(data, timeStr) {
   // Update Inference
   if (data.label) {
     let icon = "❓";
-    if (data.label === "idle") icon = "🛑";
-    if (data.label === "walk") icon = "🚶";
-    if (data.label === "run") icon = "🏃";
+    if (data.label.toLowerCase() === "circle") icon = "🔄";
+    if (data.label.toLowerCase() === "shake") icon = "↔️";
     motionLabel.innerText = `${icon} ${data.label.toUpperCase()}`;
   }
   
@@ -127,9 +127,15 @@ function updateVisionUI(data, timeStr) {
 
   // Parse label & confidence (Assume partner sends similar structure)
   if (data.label) {
-    visionLabel.innerText = `🔍 ${data.label.toUpperCase()}`;
+    let icon = "🔍";
+    if (data.label.toLowerCase() === "airpods") icon = "🎧";
+    if (data.label.toLowerCase() === "glasses") icon = "👓";
+    visionLabel.innerText = `${icon} ${data.label.toUpperCase()}`;
   } else if (data.class) { // fallback common keys
-    visionLabel.innerText = `🔍 ${data.class.toUpperCase()}`;
+    let icon = "🔍";
+    if (data.class.toLowerCase() === "airpods") icon = "🎧";
+    if (data.class.toLowerCase() === "glasses") icon = "👓";
+    visionLabel.innerText = `${icon} ${data.class.toUpperCase()}`;
   }
   
   if (data.confidence !== undefined) {
