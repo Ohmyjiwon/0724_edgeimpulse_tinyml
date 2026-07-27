@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Air Pencil - Shape Tracing</title>
+  <link rel="stylesheet" href="draw.css">
+</head>
+<body>
+  <div class="glass-container">
+    <header>
+      <h1>Air Pencil ✏️</h1>
+      <p>Connect your ESP32S3 and trace the shapes in the air!</p>
+      <div class="controls">
+        <button id="btnConnect" class="btn primary">🔌 Connect BLE</button>
+        <button id="btnCircle" class="btn">⭕ Circle</button>
+        <button id="btnEllipse" class="btn">🪐 Ellipse</button>
+        <button id="btnSquare" class="btn">🟥 Square</button>
+        <button id="btnCenter" class="btn primary">🎯 Recenter</button>
+        <button id="btnClear" class="btn danger">🗑️ Clear</button>
+      </div>
+      <div id="status" class="status badge-idle">Disconnected</div>
+    </header>
+
+    <div class="canvas-wrapper">
+      <canvas id="drawCanvas" width="800" height="500"></canvas>
+      <div id="pencilCursor">✏️</div>
+    </div>
+    
+    <div class="stats">
+      <div class="stat-box">
+        <div class="stat-label">Accuracy</div>
+        <div class="stat-value" id="accuracy">0%</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Pitch (Y)</div>
+        <div class="stat-value" id="valPitch">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Roll (X)</div>
+        <div class="stat-value" id="valRoll">0</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="draw.js"></script>
+</body>
+</html>

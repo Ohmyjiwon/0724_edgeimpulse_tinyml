@@ -39,6 +39,7 @@ unsigned long lastSample = 0;
 unsigned long lastInference = 0;
 
 int16_t curAx = 0, curAy = 0, curAz = 0;
+int16_t curYaw = 0, curRoll = 0, curPitch = 0;
 
 void handleRoot() {
   server.send(200, "text/html", "<h2>XIAO ESP32S3 Dual AP+BLE Inference Server</h2><p>Visit Dashboard at http://localhost:8080</p>");
@@ -66,7 +67,10 @@ void handleClassify() {
   json += ",\"confidence\":" + String(result.classification[best].value, 3);
   json += ",\"ax\":" + String(curAx);
   json += ",\"ay\":" + String(curAy);
-  json += ",\"az\":" + String(curAz) + "}";
+  json += ",\"az\":" + String(curAz);
+  json += ",\"yaw\":" + String(curYaw);
+  json += ",\"roll\":" + String(curRoll);
+  json += ",\"pitch\":" + String(curPitch) + "}";
   
   server.sendHeader("Access-Control-Allow-Origin", "*");
   server.send(200, "application/json", json);
@@ -149,6 +153,16 @@ void loop() {
       gz = Wire.read() | (Wire.read() << 8);
     }
     
+    Wire.beginTransmission(0x29);
+    Wire.write(0x1A);
+    Wire.endTransmission();
+    Wire.requestFrom(0x29, 6);
+    if (Wire.available() >= 6) {
+      curYaw = Wire.read() | (Wire.read() << 8);
+      curRoll = Wire.read() | (Wire.read() << 8);
+      curPitch = Wire.read() | (Wire.read() << 8);
+    }
+    
     memmove(features, features + 6, (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE - 6) * sizeof(float));
     features[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE - 6] = (float)curAx;
     features[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE - 5] = (float)curAy;
@@ -201,7 +215,10 @@ void loop() {
       json += ",\"confidence\":" + String(smoothed_scores[best], 3);
       json += ",\"ax\":" + String(curAx);
       json += ",\"ay\":" + String(curAy);
-      json += ",\"az\":" + String(curAz) + "}";
+      json += ",\"az\":" + String(curAz);
+      json += ",\"yaw\":" + String(curYaw);
+      json += ",\"roll\":" + String(curRoll);
+      json += ",\"pitch\":" + String(curPitch) + "}";
       
       if (deviceConnected) {
         pCharacteristic->setValue(json.c_str());
